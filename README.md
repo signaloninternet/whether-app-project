@@ -143,7 +143,8 @@ search and overlays go full-screen.
 
 ## Running it
 
-Requirements: Python 3.12+, Node 20+.
+Requirements: Python 3.12+, Node 20+. With `make`: `make setup`, then `make backend` and `make frontend` in two
+terminals, and `make test`. By hand:
 
 ```bash
 # API on :8000

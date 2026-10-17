@@ -44,9 +44,11 @@ export const EXAMPLES: Example[] = [
 const LOAD_PRESETS = [15_000, 30_000, 40_000, 45_000];
 
 function loadHint(load: number, rules: Rules | null): { strong: string; rest: string } {
-  const active = (rules?.load_rules ?? []).filter((r) => load > r.load_over_lb);
+  const all = rules?.load_rules ?? [];
+  const active = all.filter((r) => load > r.load_over_lb);
   if (!active.length) {
-    return { strong: "Base wind thresholds apply.", rest: " Load rules start above 30,000 lb." };
+    const from = all.length ? Math.min(...all.map((r) => r.load_over_lb)) : null;
+    return { strong: "Base wind thresholds apply.", rest: from ? ` Load rules start above ${from.toLocaleString()} lb.` : "" };
   }
   const text = active
     .sort((a, b) => a.min_wind_mph - b.min_wind_mph)

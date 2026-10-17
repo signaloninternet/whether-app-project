@@ -188,7 +188,6 @@ export class MapController {
       zoom: Math.max(this.map.getZoom(), 8.5),
       padding: this.padding,
       duration: 900,
-      essential: true,
     });
   }
 
@@ -260,26 +259,27 @@ export class MapController {
         "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 3, 1.2, 10, 2],
       },
     });
-    const stickerLayout = {
+    const stickerLayout = (labelFromZoom: number) => ({
       "icon-image": ["get", "sticker"] as ExpressionSpecification,
       "icon-size": ["interpolate", ["linear"], ["zoom"], 4, 0.82, 9, 1] as ExpressionSpecification,
       "icon-padding": 1,
       "symbol-sort-key": ["-", 0, ["get", "level"]] as ExpressionSpecification,
-      "text-field": ["step", ["zoom"], "", 8.5, ["get", "label"]] as ExpressionSpecification,
+      "text-field": ["step", ["zoom"], "", labelFromZoom, ["get", "label"]] as ExpressionSpecification,
       "text-font": ["Noto Sans Bold"],
       "text-size": 11,
       "text-offset": [0, 1.55] as [number, number],
       "text-anchor": "top" as const,
       "text-optional": true,
-    };
+    });
     map.addLayer({
       id: "cp-sticker-low", type: "symbol", source: "checkpoints", minzoom: 7.5,
-      layout: stickerLayout,
+      layout: stickerLayout(8.5),
       paint: { "text-color": "#2b2b2b", "text-halo-color": "#fff", "text-halo-width": 1.4 },
     });
     map.addLayer({
       id: "cp-sticker", type: "symbol", source: "checkpoints",
-      layout: stickerLayout,
+      // Risky checkpoints get their ETA earlier: those are the times a driver plans around.
+      layout: stickerLayout(6),
       paint: { "text-color": "#2b2b2b", "text-halo-color": "#fff", "text-halo-width": 1.4 },
     });
     map.addLayer({

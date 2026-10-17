@@ -38,3 +38,18 @@
   color: var(--ink-3);
   font-size: var(--text-micro);
 }
+
+.unavailable {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  max-width: 320px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: var(--shadow-2);
+  font-size: var(--text-small);
+  color: var(--ink-2);
+  text-align: center;
+}

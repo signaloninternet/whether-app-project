@@ -21,17 +21,26 @@ export function MapView({ insets, onReady }: { insets: Insets; onReady?: (c: Map
   const container = useRef<HTMLDivElement>(null);
   const controller = useRef<MapController | null>(null);
   const [hover, setHover] = useState<{ target: MapTarget; x: number; y: number } | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    const c = new MapController(container.current!, useStore.getState().theme, {
-      onHover: (target, point) => {
-        if (target?.kind === "route") hoverRoute(target.routeId);
-        else hoverRoute(null);
-        setHover(target && point ? { target, ...point } : null);
-      },
-      onSelectRoute: (routeId) => selectRoute(routeId),
-      onSelectCheckpoint: (routeId, index) => focusCheckpoint(routeId, index),
-    });
+    let c: MapController;
+    try {
+      c = new MapController(container.current!, useStore.getState().theme, {
+        onHover: (target, point) => {
+          if (target?.kind === "route") hoverRoute(target.routeId);
+          else hoverRoute(null);
+          setHover(target && point ? { target, ...point } : null);
+        },
+        onSelectRoute: (routeId) => selectRoute(routeId),
+        onSelectCheckpoint: (routeId, index) => focusCheckpoint(routeId, index),
+      });
+    } catch (err) {
+      // No WebGL (old device, locked-down browser): the panel still lists every route and checkpoint.
+      console.error("Map unavailable", err);
+      setFailed(true);
+      return;
+    }
     controller.current = c;
     onReady?.(c);
 
@@ -79,6 +88,11 @@ export function MapView({ insets, onReady }: { insets: Insets; onReady?: (c: Map
   return (
     <div className={styles.map}>
       <div ref={container} className={styles.canvas} />
+      {failed ? (
+        <p className={styles.unavailable} role="status">
+          This browser can't draw the map (WebGL is unavailable). Routes, risk and every checkpoint are still in the panel.
+        </p>
+      ) : null}
       {hover ? <MapTooltip {...hover} /> : null}
     </div>
   );

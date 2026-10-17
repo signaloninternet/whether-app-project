@@ -6,11 +6,11 @@ import { Icon } from "../ui/Icon";
 import { RiskBar } from "./RiskBar";
 import styles from "./results.module.css";
 
-export function tripTitle(plan: Plan): string {
+function tripTitle(plan: Plan): string {
   return `${plan.inputs.origin.label.split(",")[0]} → ${plan.inputs.destination.label.split(",")[0]}`;
 }
 
-export function tripSubtitle(plan: Plan): string {
+function tripSubtitle(plan: Plan): string {
   const tz = plan.inputs.timezone;
   const leaves = `${formatDayTime(plan.departure_utc, tz)} ${zoneAbbreviation(tz, Date.parse(plan.departure_utc))}`;
   const load = `${plan.inputs.load_weight_lb.toLocaleString()} lb load`;
