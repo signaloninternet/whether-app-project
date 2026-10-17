@@ -14,6 +14,10 @@ const LAYER = "heat";
  * Mercator. Each frame is upsampled bilinearly *in value space* and only then
  * coloured, so gradients follow the ramp instead of blending two colours.
  * Hours are cross-faded, which keeps the 0-48 h slider smooth between steps.
+ * Wind is a value at each hour, so it blends between hours; rain, snow and
+ * risk are totals *for* an hour, so they are drawn centred on that hour and
+ * the hour containing the slider time always dominates (matching how
+ * checkpoints are classified).
  * Cells outside the corridor take their nearest neighbour's value (so edges
  * don't fade towards zero), and the corridor's outline comes from the routes
  * themselves: a per-pixel distance field, so the edge is a smooth ribbon
@@ -32,8 +36,14 @@ export class HeatRenderer {
   private image: ImageData | null = null;
   private ramps = new Map<HeatLayer, Ramp>();
   private pending = false;
+  private styleReady = false;
 
   constructor(private map: MapLibreMap) {}
+
+  /** The controller flips this around style (theme) changes; nothing is added mid-load. */
+  setStyleReady(ready: boolean) {
+    this.styleReady = ready;
+  }
 
   setData(heat: Heatmap | null, rules: Rules | null, routes: LngLat[][] = []) {
     this.heat = heat;
@@ -71,6 +81,7 @@ export class HeatRenderer {
   /** Re-create the source and layer (after a style change). */
   install() {
     const map = this.map;
+    if (!this.styleReady) return; // the controller calls install() again once the style has loaded
     if (map.getLayer(LAYER)) map.removeLayer(LAYER);
     if (map.getSource(SOURCE)) map.removeSource(SOURCE);
     if (!this.heat) return;
@@ -137,12 +148,9 @@ export class HeatRenderer {
     if (!heat || !image || !source || !this.mask || !this.rules) return;
 
     const frames = this.framesFor(this.layer);
-    const h = Math.max(0, Math.min(heat.hours, this.hour));
-    const h0 = Math.floor(h);
-    const h1 = Math.min(heat.hours, h0 + 1);
-    const t = h - h0;
-    const a = frames[h0];
-    const b = frames[h1];
+    const { i0, i1, t } = blendFor(this.layer, this.hour, heat.hours);
+    const a = frames[i0];
+    const b = frames[i1];
     const { ncols, nrows } = heat.grid;
     const s = this.scale;
     const W = ncols * s;
@@ -211,10 +219,26 @@ export class HeatRenderer {
     const pixel = Math.floor(fy * this.image!.height) * W + Math.floor(fx * W);
     if (!this.inside[idx] || (this.mask?.[pixel] ?? 0) < 0.3) return null;
     const frames = this.framesFor(this.layer);
-    const h0 = Math.floor(Math.max(0, Math.min(heat.hours, this.hour)));
-    const value = frames[h0]?.[idx];
-    return value == null || Number.isNaN(value) ? null : { layer: this.layer, value };
+    const { i0, i1, t } = blendFor(this.layer, this.hour, heat.hours);
+    const a = frames[i0]?.[idx];
+    const b = frames[i1]?.[idx];
+    if (a == null || Number.isNaN(a)) return null;
+    // Wind reads the interpolated value; hourly totals read the hour containing the time.
+    const value = this.layer === "wind" ? a + (b - a) * t : frames[hourIndex(this.hour, heat.hours)][idx];
+    return Number.isNaN(value) ? null : { layer: this.layer, value };
   }
+}
+
+function hourIndex(hour: number, hours: number): number {
+  return Math.max(0, Math.min(hours, Math.floor(hour)));
+}
+
+/** Which two frames to blend at ``hour`` (frames are hourly from the start of the departure hour). */
+export function blendFor(layer: HeatLayer, hour: number, hours: number): { i0: number; i1: number; t: number } {
+  const pos = Math.max(0, Math.min(hours, layer === "wind" ? hour : hour - 0.5));
+  const i0 = Math.min(hours, Math.floor(pos));
+  const i1 = Math.min(hours, i0 + 1);
+  return { i0, i1, t: i1 === i0 ? 0 : pos - i0 };
 }
 
 function addRisk(level: number, weight: number, out: RGBA) {

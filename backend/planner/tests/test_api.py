@@ -1,3 +1,4 @@
+import math
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -11,11 +12,15 @@ from planner.services.routing import RouteCandidate, RouteOptions
 from planner.services.weather import HOUR, HourlyForecast
 
 ORIGIN = (41.8756, -87.6244)
+DEST = (41.8756, -92.4)
 
 
-def route(lat_shift: float, hours: float, name: str) -> RouteCandidate:
-    start = (ORIGIN[0] + lat_shift, ORIGIN[1])
-    coords = [destination_point(start, 270, 400_000 * i / 80) for i in range(81)]
+def route(bulge_deg: float, hours: float, name: str) -> RouteCandidate:
+    """An alternative from ORIGIN to DEST that bows north (+) or south (-) mid-trip."""
+    coords = [
+        (ORIGIN[0] + bulge_deg * math.sin(math.pi * t), ORIGIN[1] + (DEST[1] - ORIGIN[1]) * t)
+        for t in (i / 80 for i in range(81))
+    ]
     cum = cumulative_distances(coords)
     r = RouteCandidate(coords, cum, [hours * HOUR * d / cum[-1] for d in cum], "valhalla-truck", "fastest")
     r.road_names = [name]
@@ -24,7 +29,7 @@ def route(lat_shift: float, hours: float, name: str) -> RouteCandidate:
 
 @pytest.fixture
 def fake_world(monkeypatch):
-    """Three routes; only the northern one (B) avoids 40 mph wind, and A is fastest."""
+    """Three routes; a 40 mph wind band sits mid-trip and only the northern one (B) bows around it."""
     routes = [route(0.0, 4.0, "I-80"), route(0.5, 4.3, "I-90"), route(-0.5, 4.5, "I-70")]
     monkeypatch.setattr(planner_service, "route_options",
                         lambda o, d, truck: RouteOptions(routes=routes, engine="valhalla"))
@@ -33,7 +38,8 @@ def fake_world(monkeypatch):
         start_h, n = weather.floor_hour(start), int((weather.floor_hour(end) - weather.floor_hour(start)) // HOUR) + 2
         out = {}
         for p in points:
-            wind = 10.0 if p[0] > ORIGIN[0] + 0.25 else 40.0
+            in_band = -91.0 < p[1] < -89.0 and p[0] < ORIGIN[0] + 0.25
+            wind = 40.0 if in_band else 10.0
             out[p] = HourlyForecast(start_h, (wind,) * n, (wind + 10,) * n, (0.0,) * n, (0.0,) * n, (50.0,) * n, (3,) * n)
         return out
 
@@ -49,7 +55,7 @@ def departure_in(hours: float) -> str:
 def plan_body(**overrides):
     body = {
         "origin": {"lat": ORIGIN[0], "lon": ORIGIN[1], "label": "Chicago"},
-        "destination": {"lat": 41.8, "lon": -92.4, "label": "Iowa"},
+        "destination": {"lat": DEST[0], "lon": DEST[1], "label": "Iowa"},
         "departure": departure_in(2),
         "timezone": "America/Chicago",
         "load_weight_lb": 42_000,
@@ -159,3 +165,81 @@ def test_corridor_closing_fills_narrow_gaps_but_not_wide_ones():
 
     assert covered_between(near, 40.8)  # gap between corridors filled
     assert not covered_between(far, 42.5)  # distinct corridors stay distinct
+
+
+@pytest.mark.django_db(databases=[])
+def test_plan_survives_a_forecast_outage(fake_world, monkeypatch):
+    from planner.services.http import UpstreamRateLimited
+
+    def down(*a, **k):
+        raise UpstreamRateLimited("Open-Meteo weather", "rate limit reached")
+
+    monkeypatch.setattr(weather, "fetch_forecasts", down)
+    res = APIClient().post("/api/plan", plan_body(load_weight_lb=1234), format="json")
+    assert res.status_code == 200
+    plan = res.json()
+    assert plan["forecast_available"] is False and "couldn't be assessed" in plan["warnings"][0]
+    assert all(r["risk"]["unknown_miles"] > 0 and r["risk"]["max_level"] is None for r in plan["routes"])
+    assert all(cp["risk"] is None for cp in plan["routes"][0]["checkpoints"])
+    assert plan["recommendation"]["route_id"] == "A" and "unknown" in plan["recommendation"]["headline"]
+
+
+@pytest.mark.django_db(databases=[])
+def test_cached_plan_echoes_this_requests_labels(fake_world):
+    first = APIClient().post("/api/plan", plan_body(), format="json").json()
+    body = plan_body()
+    body["origin"]["label"] = "Chicago, IL (yard 7)"
+    second = APIClient().post("/api/plan", body, format="json").json()
+    assert second["plan_id"] == first["plan_id"]
+    assert second["inputs"]["origin"]["label"] == "Chicago, IL (yard 7)"
+
+
+@pytest.mark.django_db(databases=[])
+def test_missing_forecast_hours_are_flagged(fake_world, monkeypatch):
+    real = weather.fetch_forecasts
+
+    def gappy(points, start, end):
+        out = real(points, start, end)
+        # Blank every forecast west of -91 (no data for the last stretch of each route).
+        return {p: (s if p[1] > -91 else HourlyForecast(s.start, (None,) * len(s.wind), s.gust, s.rain, s.snow, s.temp, s.code))
+                for p, s in out.items()}
+
+    monkeypatch.setattr(weather, "fetch_forecasts", gappy)
+    plan = APIClient().post("/api/plan", plan_body(load_weight_lb=4321), format="json").json()
+    assert any("No forecast for" in w for w in plan["warnings"])
+    assert all(r["risk"]["unknown_miles"] > 0 for r in plan["routes"])
+
+
+@pytest.mark.parametrize("routes, message", [
+    (["_p~iF~ps|U_ulLnnqC", "_ibE_seK_seK_seK"], "share their origin"),
+    (["_ibE_seK", "_ibE_seK"], "Each route needs"),
+])
+@pytest.mark.django_db(databases=[])
+def test_heatmap_rejects_unrelated_or_degenerate_routes(routes, message):
+    res = APIClient().post("/api/heatmap", {"routes": routes, "departure_utc": departure_in_utc(2),
+                                            "load_weight_lb": 1000}, format="json")
+    assert res.status_code == 400 and message in res.json()["error"]["message"]
+
+
+@pytest.mark.django_db(databases=[])
+def test_heatmap_rejects_huge_spans():
+    from planner.services.geo import encode_polyline
+    a = encode_polyline([(10.0, -170.0), (60.0, 170.0)])
+    res = APIClient().post("/api/heatmap", {"routes": [a, a], "departure_utc": departure_in_utc(2),
+                                            "load_weight_lb": 1000}, format="json")
+    assert res.status_code == 400 and "too large" in res.json()["error"]["message"]
+
+
+def test_corridor_grid_border_is_never_fetched():
+    from planner.services.heatmap import corridor_grid
+
+    lines = [[destination_point((40.0, -100.0), 90, 800_000 * i / 80) for i in range(81)],
+             [destination_point((41.2, -100.0), 90, 800_000 * i / 80) for i in range(81)]]
+    grid = corridor_grid(lines, radius_m=70_000, max_cells=200)
+    border = {k for k in range(grid.ncols * grid.nrows)
+              if k < grid.ncols or k >= grid.ncols * (grid.nrows - 1) or k % grid.ncols in (0, grid.ncols - 1)}
+    assert not border & {k for k, _ in grid.cells}
+
+
+def departure_in_utc(hours: float) -> str:
+    return (datetime.now(ZoneInfo("UTC")) + timedelta(hours=hours)).isoformat()

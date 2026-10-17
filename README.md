@@ -97,9 +97,15 @@ Routes are ranked lexicographically on
 1. **No Travel miles** (added: a route through No Travel weather is never the safer one),
 2. Severe miles, 3. High miles, 4. mile-weighted average risk (Low = 0 … No Travel = 4), 5. travel time.
 
-Mileages compare at 0.1 mi and the average at 0.01, so floating-point noise never decides. The card states the
-deciding criterion ("Route C: fewest No Travel miles — 88 mi vs 162 mi on A, 162 mi on B"). If every route
-crosses Severe or No Travel weather, the app says so and suggests delaying.
+Mileages compare at 0.1 mi and the average at 0.01, so floating-point noise never decides. The card explains the
+decision rule by rule, comparing only routes still in contention ("No Travel miles: 0 mi vs 50 mi on B. Severe
+miles: 0 mi vs 100 mi on A."). If every route crosses Severe or No Travel weather, the app says so and suggests
+delaying.
+
+Stretches without a forecast show as "No forecast" (not Low) and are left out of the average. They can't be
+ranked, so the plan flags them ("No forecast for 40 mi of route B, so its risk may be understated"). If the
+forecast service is down entirely, the routes still come back, ranked by time and clearly marked unassessed; such
+a plan is never cached.
 
 ### Heatmap
 
@@ -111,14 +117,17 @@ hourly from the departure hour for 48 h, with risk computed server-side using th
 The browser draws each frame into one image stretched over the grid, so it lines up with the map exactly:
 
 - values are upsampled bilinearly and *then* coloured, so gradients follow the colour ramp;
-- hours cross-fade, so the slider moves smoothly between forecast steps;
+- the slider moves smoothly between forecast steps. Wind (a value at each hour) is interpolated between hours.
+  Rain, snow and risk are totals *for* an hour, so the hour containing the slider time always dominates: the map
+  agrees with how checkpoints are classified;
 - the corridor outline comes from a distance field of the routes, giving a smooth ribbon rather than coarse cells;
 - frames re-render on demand through `ImageSource.updateImage`. Playing the timeline (heatmap redraw plus truck
   markers every frame) holds 60 fps in Chrome: p95 frame time 16.7 ms over 4 s, measured with the
   production build.
 
 Hovering any point gives its value. The slider is anchored at the departure time and also moves a truck marker
-along each route.
+along each route. The heatmap endpoint only accepts alternatives of one trip (shared ends, at most 7,000 km across)
+and caps its grid, so a request can't tie up the server.
 
 ### Colour
 
@@ -164,9 +173,9 @@ Open http://localhost:5173 and try one of the example trips.
 ### Testing
 
 ```bash
-cd backend && .venv/bin/pytest      # 113 tests, 95% coverage: rules, sampling, HOS, weather hours, ranking,
-                                    # routing, heatmap, API, and every upstream adapter against mocked HTTP
-cd frontend && npm test             # time zones/DST, geometry, ramps, share links
+cd backend && .venv/bin/pytest      # 122 tests, ~95% coverage: rules, sampling, HOS, weather hours, ranking,
+                                    # routing, heatmap, API, every upstream adapter against mocked HTTP
+cd frontend && npm test             # time zones and DST (matching the API), geometry, ramps, heat blending, links
 cd frontend && npm run typecheck
 ```
 
@@ -213,7 +222,8 @@ Errors always come back as `{"error": {"code", "message", "fields"?}}`.
   forecasts are cached; throttling protects the upstream services. Point the env vars at keyed or self-hosted
   instances for production use.
 - **Departure:** must be within 7 days (forecast range). It's interpreted in the origin's time zone, and all times
-  show in that zone.
+  show in that zone. Times that don't exist or happen twice at a DST change resolve the same way on both sides
+  (earlier offset).
 - **Long-haul fallback:** when Valhalla can't route a long-haul piece, that option uses car-network geometry, which
   doesn't check heavy-vehicle restrictions. It is labelled in the UI.
 - **HOS model:** a simplified schedule (no on-duty, non-driving time and no 70-hour cycle). It's off by default.

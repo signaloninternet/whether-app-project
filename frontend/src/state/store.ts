@@ -44,6 +44,7 @@ interface State {
   planError: ApiError | null;
   heatmap: Heatmap | null;
   heatStatus: "idle" | "loading" | "ready" | "error";
+  heatNote: string | null; // e.g. "forecast service busy, retrying"
   view: View;
   selectedRouteId: string | null;
   hoveredRouteId: string | null;
@@ -95,6 +96,7 @@ export const useStore = create<State>(() => ({
   planError: null,
   heatmap: null,
   heatStatus: "idle",
+  heatNote: null,
   view: "edit",
   selectedRouteId: null,
   hoveredRouteId: null,
@@ -145,8 +147,14 @@ let tzRequest: AbortController | null = null;
 let tzPending: Promise<void> | null = null;
 
 export function setPlace(field: PlaceField, place: PlaceValue | null) {
-  updateDraft({ [field]: place });
-  if (field === "origin" && place) resolveOriginTimezone(place);
+  if (field === "origin") {
+    // The old origin's zone no longer applies; until the new one resolves the
+    // server works it out from the coordinates.
+    updateDraft({ origin: place, timezoneFromOrigin: false });
+    if (place) resolveOriginTimezone(place);
+    return;
+  }
+  updateDraft({ destination: place });
 }
 
 function resolveOriginTimezone(place: PlaceValue) {
@@ -174,7 +182,7 @@ async function lookUpOriginTimezone(place: PlaceValue) {
 
 export function swapPlaces() {
   const { origin, destination } = get().draft;
-  updateDraft({ origin: destination, destination: origin });
+  updateDraft({ origin: destination, destination: origin, timezoneFromOrigin: false });
   if (destination) resolveOriginTimezone(destination);
 }
 
@@ -223,13 +231,15 @@ export async function runPlan(preferredRoute: string | null = null) {
         origin: { lat: draft.origin!.lat, lon: draft.origin!.lon, label: placeLabel(draft.origin!) },
         destination: { lat: draft.destination!.lat, lon: draft.destination!.lon, label: placeLabel(draft.destination!) },
         departure: draft.departure,
-        timezone: draft.timezone,
+        // Only a zone known to belong to this origin; otherwise the server resolves it.
+        ...(draft.timezoneFromOrigin ? { timezone: draft.timezone } : {}),
         load_weight_lb: Math.round(draft.loadLb),
         interval_mi: draft.intervalMi,
         hos_breaks: draft.hos,
       },
       request.signal,
     );
+    if (request.signal.aborted) return;
     const selected = plan.routes.some((r) => r.id === preferredRoute) ? preferredRoute! : plan.recommendation.route_id;
     set({
       plan,
@@ -237,6 +247,7 @@ export async function runPlan(preferredRoute: string | null = null) {
       planStatus: "idle",
       heatmap: null,
       heatStatus: "idle",
+      heatNote: null,
       view: "results",
       selectedRouteId: selected,
       hoveredRouteId: null,
@@ -245,26 +256,36 @@ export async function runPlan(preferredRoute: string | null = null) {
     syncUrl();
     loadHeatmap();
   } catch (err) {
-    if ((err as Error).name === "AbortError") return;
+    if ((err as Error).name === "AbortError" || request.signal.aborted) return;
     const error = err instanceof ApiError ? err : new ApiError("unknown", "Something went wrong.", 0);
     set({ planStatus: "error", planError: error });
     toast("Couldn't plan this trip", error.message, "error");
   }
 }
 
-export async function loadHeatmap() {
+const HEAT_RETRIES = 3;
+
+export async function loadHeatmap(attempt = 1) {
   const { plan } = get();
   if (!plan) return;
   heatRequest?.abort();
-  heatRequest = new AbortController();
-  set({ heatStatus: "loading" });
+  const request = (heatRequest = new AbortController());
+  set({ heatStatus: "loading", ...(attempt === 1 ? { heatNote: null } : {}) });
   try {
-    const heatmap = await api.heatmap(plan.heatmap_request, heatRequest.signal);
-    if (get().plan !== plan) return;
-    set({ heatmap, heatStatus: "ready" });
+    const heatmap = await api.heatmap(plan.heatmap_request, request.signal);
+    if (request.signal.aborted || get().plan !== plan) return;
+    set({ heatmap, heatStatus: "ready", heatNote: null });
   } catch (err) {
-    if ((err as Error).name === "AbortError") return;
-    set({ heatStatus: "error" });
+    if ((err as Error).name === "AbortError" || request.signal.aborted) return;
+    // Free-tier forecast limits reset within a minute: back off and try again.
+    if (err instanceof ApiError && err.code === "upstream_busy" && attempt < HEAT_RETRIES) {
+      set({ heatNote: "forecast service busy, retrying…" });
+      window.setTimeout(() => {
+        if (get().plan === plan && heatRequest === request) loadHeatmap(attempt + 1);
+      }, 15_000 * attempt);
+      return;
+    }
+    set({ heatStatus: "error", heatNote: null });
   }
 }
 
@@ -387,9 +408,10 @@ export function openSearch(field: PlaceField | null) {
   set({ search: field });
 }
 
-/** "Local time in Chicago (CDT)" / "Your time zone (IST)" */
+/** Departure is always wall-clock time at the pickup: "Local time at Chicago (CDT)". */
 export function departureZoneHint(draft: Draft): string {
+  if (!draft.origin) return "Local time at the pickup";
+  if (!draft.timezoneFromOrigin) return `Local time at ${draft.origin.name}`;
   const abbr = zoneAbbreviation(draft.timezone, fromLocalInput(draft.departure, draft.timezone) || Date.now());
-  if (draft.timezoneFromOrigin && draft.origin) return `Local time at ${draft.origin.name} (${abbr})`;
-  return `Your time zone (${abbr}); switches to the origin's once it's chosen`;
+  return `Local time at ${draft.origin.name} (${abbr})`;
 }

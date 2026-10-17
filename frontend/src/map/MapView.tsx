@@ -44,10 +44,16 @@ export function MapView({ insets, onReady }: { insets: Insets; onReady?: (c: Map
     controller.current = c;
     onReady?.(c);
 
+    // Coming back to the planner: rebuild the map from everything the store remembers.
     const s = useStore.getState();
     c.setPlan(s.plan);
+    c.setSelection(s.selectedRouteId, s.hoveredRouteId);
     c.setHeatLayer(s.heatLayer);
     c.setHeatVisible(s.heatVisible);
+    c.setHeatmap(s.heatmap);
+    c.setHour(s.hour);
+    if (s.terrain) c.setTerrain(true);
+    if (s.plan) window.setTimeout(() => c.fitRoutes(false), 0);
 
     const unsubscribe = useStore.subscribe((state, prev) => {
       if (state.theme !== prev.theme) c.setTheme(state.theme);

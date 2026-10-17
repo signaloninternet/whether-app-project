@@ -25,9 +25,14 @@ async function request<T>(path: string, init: RequestInit & { signal?: AbortSign
     if ((err as Error).name === "AbortError") throw err;
     throw new ApiError("network", "Can't reach the server. Check your connection and try again.", 0);
   }
-  const body = await res.json().catch(() => null);
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch (err) {
+    if ((err as Error).name === "AbortError") throw err; // aborted mid-download: not a result
+  }
   if (!res.ok) {
-    const error = body?.error;
+    const error = (body as { error?: { code?: string; message?: string; fields?: Record<string, unknown> } } | null)?.error;
     throw new ApiError(
       error?.code ?? "http_error",
       error?.message ?? `The server answered ${res.status}.`,
@@ -35,6 +40,7 @@ async function request<T>(path: string, init: RequestInit & { signal?: AbortSign
       error?.fields,
     );
   }
+  if (body == null) throw new ApiError("bad_response", "The server sent an empty response. Please retry.", res.status);
   return body as T;
 }
 

@@ -174,17 +174,26 @@ def _regional(origin: LatLon, dest: LatLon, truck: TruckProfile, notes: list[str
 
 
 def _long_haul(origin: LatLon, dest: LatLon, truck: TruckProfile, notes: list[str]) -> tuple[str, list[RouteCandidate]]:
+    """Car-router corridors, each re-routed for trucks; search more when two converge."""
     skeletons: list[RouteCandidate] = []
     _keep_distinct(osrm.route([origin, dest], truck, alternatives=WANTED - 1), skeletons)
-    with ThreadPoolExecutor(max_workers=WANTED) as pool:
-        # Truck-route the corridors we have while the missing ones are found.
-        futures = [pool.submit(_truck_along, s, truck) for s in skeletons]
-        found = len(skeletons)
-        _fill_with_corridors(skeletons, origin, dest, truck, _osrm_corridor)
-        futures += [pool.submit(_truck_along, s, truck) for s in skeletons[found:]]
-        routed = [f.result() for f in futures]
     kept: list[RouteCandidate] = []
-    _keep_distinct(routed, kept)
+
+    def search(pool: ThreadPoolExecutor, fractions: tuple[float, ...]):
+        return [pool.submit(_osrm_corridor, origin, via, dest, truck) for via in corridor_vias(origin, dest, fractions)]
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        routed = [pool.submit(_truck_along, s, truck) for s in skeletons]
+        # OSRM rarely finds three corridors; look for more while the first ones are truck-routed.
+        searches = search(pool, CORRIDOR_OFFSETS[0]) if len(skeletons) < WANTED else None
+        _keep_distinct([f.result() for f in routed], kept)
+        for i, fractions in enumerate(CORRIDOR_OFFSETS):
+            if len(kept) >= WANTED:
+                break
+            found = [f.result() for f in (searches if i == 0 and searches is not None else search(pool, fractions))]
+            fresh = [c for c in found if c and _is_new_option(c, skeletons)]
+            skeletons.extend(fresh)
+            _keep_distinct(list(pool.map(lambda c: _truck_along(c, truck), fresh)), kept)
 
     if any(r.engine != "valhalla-truck" for r in kept):
         notes.append("Some long-haul routes keep OSRM's car-network geometry re-timed for a "

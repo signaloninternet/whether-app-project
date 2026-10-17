@@ -153,6 +153,28 @@ def test_long_haul_reroutes_osrm_corridors_for_trucks(monkeypatch):
     assert len(seen) == 2 and all(w.heading is not None for w in seen[0][1:-1])
 
 
+def test_long_haul_refills_when_truck_routes_converge(monkeypatch):
+    origin, dest = (40.0, -100.0), destination_point((40.0, -100.0), 90, 2_500_000)
+    car_a = candidate(line_east(origin, 2500), 30 * 3600)
+    car_b = candidate(line_east((41.5, -100.0), 2500), 31 * 3600, "alternate")
+    north = candidate(line_east((43.0, -100.0), 2500), 32 * 3600, "corridor")
+    south = candidate(line_east((37.0, -100.0), 2500), 32 * 3600, "corridor")
+    monkeypatch.setattr(osrm, "route", lambda *a, **k: [car_a, car_b])
+    corridors = iter([north, south, None, None])
+    monkeypatch.setattr(options, "_osrm_corridor", lambda *a: next(corridors))
+
+    def truck_route(waypoints, truck, strategy):
+        # The truck router pulls both car corridors A and B onto A's road.
+        lat = waypoints[1].point[0]
+        snapped = car_a if abs(lat - 41.5) < 0.6 or abs(lat - 40.0) < 0.6 else candidate([w.point for w in waypoints], 33 * 3600, strategy)
+        snapped.engine = "valhalla-truck"
+        return snapped
+
+    monkeypatch.setattr(valhalla, "route_through", truck_route)
+    result = options.route_options(origin, dest, TRUCK)
+    assert len(result.routes) == 3  # the corridor search refilled the merged slot
+
+
 def test_long_haul_keeps_osrm_geometry_when_truck_router_fails(monkeypatch):
     origin, dest = (40.0, -100.0), destination_point((40.0, -100.0), 90, 2_500_000)
     skeleton = candidate(line_east(origin, 2500), 30 * 3600)

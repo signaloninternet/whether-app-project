@@ -76,18 +76,27 @@ export function toLocalInput(epoch: number, timeZone: string): string {
   return `${y}-${pad(mo)}-${pad(d)}T${pad(h)}:${pad(mi)}`;
 }
 
-/** Instant for a wall-clock "YYYY-MM-DDTHH:MM" in ``timeZone`` (DST-safe to the minute). */
+function offsetAt(epoch: number, timeZone: string): number {
+  const { y, mo, d, h, mi } = wallClockParts(epoch, timeZone);
+  return Date.UTC(y, mo - 1, d, h, mi) - Math.floor(epoch / 60_000) * 60_000;
+}
+
+/**
+ * Instant for a wall-clock "YYYY-MM-DDTHH:MM" in ``timeZone``, resolved like
+ * Python's ``fold=0`` (as the API does): an ambiguous time (clocks back) is
+ * its first occurrence, and a time skipped by clocks going forward uses the
+ * offset from before the change.
+ */
 export function fromLocalInput(local: string, timeZone: string): number {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(local);
   if (!m) return Number.NaN;
   const asUtc = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
-  let epoch = asUtc;
-  for (let i = 0; i < 2; i++) {
-    const { y, mo, d, h, mi } = wallClockParts(epoch, timeZone);
-    const offset = Date.UTC(y, mo - 1, d, h, mi) - epoch;
-    epoch = asUtc - offset;
-  }
-  return epoch;
+  const DAY = 86_400_000;
+  const before = asUtc - offsetAt(asUtc - DAY, timeZone);
+  if (toLocalInput(before, timeZone) === local.slice(0, 16)) return before;
+  const after = asUtc - offsetAt(asUtc + DAY, timeZone);
+  if (toLocalInput(after, timeZone) === local.slice(0, 16)) return after;
+  return before; // inside a spring-forward gap
 }
 
 /** Next quarter hour, at least 10 minutes from now, as a wall-clock input value. */

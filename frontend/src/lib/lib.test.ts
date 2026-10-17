@@ -51,6 +51,14 @@ describe("time", () => {
     expect(new Date(fromLocalInput("2026-12-04T08:00", "America/Chicago")).toISOString()).toBe("2026-12-04T14:00:00.000Z");
   });
 
+  it("resolves DST edge times like the API (Python fold=0)", () => {
+    // Clocks go forward at 02:00 on 2026-03-08: 02:30 does not exist.
+    expect(new Date(fromLocalInput("2026-03-08T02:30", "America/New_York")).toISOString()).toBe("2026-03-08T07:30:00.000Z");
+    expect(new Date(fromLocalInput("2026-03-08T02:30", "America/Chicago")).toISOString()).toBe("2026-03-08T08:30:00.000Z");
+    // Clocks go back at 02:00 on 2026-11-01: 01:30 happens twice; take the first.
+    expect(new Date(fromLocalInput("2026-11-01T01:30", "America/Chicago")).toISOString()).toBe("2026-11-01T06:30:00.000Z");
+  });
+
   it("formats durations", () => {
     expect(formatDuration(45 * 60)).toBe("45m");
     expect(formatDuration(16 * 3600 + 28 * 60)).toBe("16h 28m");
@@ -100,7 +108,9 @@ describe("share links", () => {
 
   it("rejects broken links and clamps bad values", () => {
     expect(tripFromSearch("?from=nope&to=1,2")).toBeNull();
-    const parsed = tripFromSearch("?from=1,2~A~&to=3,4~B~&w=999999&every=15&dep=tomorrow");
-    expect(parsed).toMatchObject({ loadLb: 40_000, intervalMi: 25, departure: null });
+    const parsed = tripFromSearch("?from=1,2~A~&to=3,4~B~&w=999999&every=15&dep=tomorrow&tz=Mars/Olympus");
+    expect(parsed).toMatchObject({ loadLb: 40_000, intervalMi: 25, departure: null, timezone: null });
+    expect(tripFromSearch("?from=1,2~A~&to=3,4~B~")?.loadLb).toBe(40_000); // no weight given
+    expect(tripFromSearch("?from=1,2~A~&to=3,4~B~&w=0")?.loadLb).toBe(0); // an empty truck is valid
   });
 });

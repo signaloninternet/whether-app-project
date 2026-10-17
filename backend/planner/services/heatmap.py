@@ -32,6 +32,7 @@ from .risk import assess
 
 HOURS = 48
 MIN_CELL_M = 4_000.0
+MAX_GRID_CELLS = 40_000  # bounds the dense distance transforms, whatever the request
 
 
 def corridor_radius_m(longest_route_m: float) -> float:
@@ -101,18 +102,24 @@ def corridor_grid(lines: list[list[LatLon]], radius_m: float, max_cells: int) ->
     lats = [p[0] for p in corridor]
     lons = [p[1] for p in corridor]
     mid_lat = (min(lats) + max(lats)) / 2
-    # The closing grows the corridor by `closing` before shrinking it back, so the
-    # grid must reach that far for its border to count as "outside".
-    pad_lat = math.degrees((radius_m + closing) / EARTH_RADIUS_M)
-    pad_lon = pad_lat / max(0.1, math.cos(math.radians(mid_lat)))
-    west, east = lon_to_mercator_x(min(lons) - pad_lon), lon_to_mercator_x(max(lons) + pad_lon)
-    south, north = lat_to_mercator_y(min(lats) - pad_lat), lat_to_mercator_y(max(lats) + pad_lat)
     mercator_per_ground_m = 1 / math.cos(math.radians(mid_lat))
 
-    def build(cell_m: float) -> Grid:
+    def bounds(cell_m: float) -> tuple[float, float, float, float]:
+        # The closing grows the corridor by `closing` before shrinking it back, so
+        # border cells must sit beyond that reach (plus slack) to count as outside.
+        pad_lat = math.degrees((radius_m + closing + 2 * cell_m) / EARTH_RADIUS_M)
+        pad_lon = pad_lat / max(0.1, math.cos(math.radians(mid_lat)))
+        return (lon_to_mercator_x(min(lons) - pad_lon), lon_to_mercator_x(max(lons) + pad_lon),
+                lat_to_mercator_y(min(lats) - pad_lat), lat_to_mercator_y(max(lats) + pad_lat))
+
+    def shape(cell_m: float) -> tuple[int, int]:
+        west, east, south, north = bounds(cell_m)
         step = cell_m * mercator_per_ground_m
-        ncols = max(1, math.ceil((east - west) / step))
-        nrows = max(1, math.ceil((north - south) / step))
+        return max(1, math.ceil((east - west) / step)), max(1, math.ceil((north - south) / step))
+
+    def build(cell_m: float) -> Grid:
+        west, east, south, north = bounds(cell_m)
+        ncols, nrows = shape(cell_m)
         centres = [
             (mercator_y_to_lat(north - (r + 0.5) * (north - south) / nrows),
              mercator_x_to_lon(west + (c + 0.5) * (east - west) / ncols))
@@ -134,9 +141,15 @@ def corridor_grid(lines: list[list[LatLon]], radius_m: float, max_cells: int) ->
         cells = [(k, centres[k]) for k in range(ncols * nrows) if to_outside[k] >= closing or to_route[k] <= radius_m]
         return Grid(west, east, south, north, ncols, nrows, cell_m, cells)
 
+    def affordable(cell_m: float) -> float:
+        """Smallest cell size >= cell_m that keeps the dense grid computation bounded."""
+        while math.prod(shape(cell_m)) > MAX_GRID_CELLS:
+            cell_m *= 1.25
+        return cell_m
+
     # Start from the corridor's area, then resize toward the cell budget.
     length = sum(cumulative_distances(line)[-1] for line in lines)
-    cell_m = max(MIN_CELL_M, math.sqrt(length * 2 * radius_m / max_cells))
+    cell_m = affordable(max(MIN_CELL_M, math.sqrt(length * 2 * radius_m / max_cells)))
     best: Grid | None = None
     for _ in range(10):
         grid = build(cell_m)
@@ -147,7 +160,10 @@ def corridor_grid(lines: list[list[LatLon]], radius_m: float, max_cells: int) ->
         best = grid
         if n >= 0.85 * max_cells or cell_m <= MIN_CELL_M:
             break
-        cell_m = max(MIN_CELL_M, cell_m * math.sqrt(max(n, 1) / (0.95 * max_cells)))
+        finer = affordable(max(MIN_CELL_M, cell_m * math.sqrt(max(n, 1) / (0.95 * max_cells))))
+        if finer >= cell_m:
+            break
+        cell_m = finer
     return best or build(cell_m * 2)
 
 

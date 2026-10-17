@@ -83,7 +83,10 @@ export class MapController {
     this.map.touchZoomRotate.disableRotation();
     this.heat = new HeatRenderer(this.map);
     this.map.setMissingStyleImageResolver((id) => handleMissingImage(this.map, id));
-    this.map.on("style.load", () => this.installOverlays());
+    this.map.on("style.load", () => {
+      this.heat.setStyleReady(true);
+      this.installOverlays();
+    });
     this.map.on("mousemove", (e) => this.queueHover(e.point));
     this.map.on("mouseout", () => this.callbacks.onHover(null, null));
     this.map.on("click", (e) => this.handleClick(e.point));
@@ -98,6 +101,7 @@ export class MapController {
   setTheme(theme: ThemeId) {
     if (theme === this.theme) return;
     this.theme = theme;
+    this.heat.setStyleReady(false);
     this.map.setStyle(buildStyle(THEME_BY_ID[theme]), { diff: false });
   }
 

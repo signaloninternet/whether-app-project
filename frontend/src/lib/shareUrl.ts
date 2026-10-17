@@ -37,19 +37,29 @@ export function tripToSearch(trip: SharedTrip): string {
   return `?${params}`;
 }
 
+function validZone(zone: string | null): string | null {
+  if (!zone) return null;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: zone });
+    return zone;
+  } catch {
+    return null; // unknown zone in a hand-edited link: fall back to the origin's
+  }
+}
+
 export function tripFromSearch(search: string): SharedTrip | null {
   const params = new URLSearchParams(search);
   const origin = decodePlace(params.get("from"));
   const destination = decodePlace(params.get("to"));
   if (!origin || !destination) return null;
-  const load = Number(params.get("w"));
+  const load = params.has("w") ? Number(params.get("w")) : Number.NaN;
   const every = Number(params.get("every"));
   const departure = params.get("dep");
   return {
     origin,
     destination,
     departure: departure && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(departure) ? departure : null,
-    timezone: params.get("tz"),
+    timezone: validZone(params.get("tz")),
     loadLb: Number.isFinite(load) && load >= 0 && load <= 80_000 ? load : 40_000,
     intervalMi: ([10, 25, 50] as const).includes(every as IntervalMi) ? (every as IntervalMi) : 25,
     hos: params.get("hos") === "1",

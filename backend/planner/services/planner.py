@@ -14,6 +14,7 @@ from django.conf import settings
 from django.core.cache import cache
 
 from . import hos, weather
+from .http import UpstreamError
 from .weather import iso_utc
 from .geo import METERS_PER_MILE, LatLon, bbox, encode_polyline, point_at_distance, simplify, slice_line
 from .risk import Risk, assess, rules_table
@@ -25,7 +26,7 @@ from .scoring import RiskSummary, ScoredRoute, plan_warnings, recommend
 log = logging.getLogger(__name__)
 
 PLAN_CACHE_S = 10 * 60
-PLAN_CACHE_VERSION = "v2"  # bump when the plan payload or routing logic changes
+PLAN_CACHE_VERSION = "v3"  # bump when the plan payload or routing logic changes
 ROUTE_IDS = "ABC"
 
 
@@ -126,11 +127,29 @@ def _stops_payload(timed: _TimedRoute, departure: float) -> list[dict]:
     return out
 
 
+def _inputs_payload(req: PlanRequest) -> dict:
+    return {
+        "origin": {"lat": req.origin[0], "lon": req.origin[1], "label": req.origin_label},
+        "destination": {"lat": req.destination[0], "lon": req.destination[1], "label": req.destination_label},
+        "departure_local": req.departure_local.isoformat(timespec="minutes"),
+        "timezone": req.timezone,
+        "load_weight_lb": req.load_lb,
+        "interval_mi": req.interval_mi,
+        "hos_breaks": req.hos_breaks,
+    }
+
+
+def _coverage_warnings(routes_payload: list[dict]) -> list[str]:
+    gaps = [(r["id"], r["risk"]["unknown_miles"]) for r in routes_payload if r["risk"]["unknown_miles"] >= 0.5]
+    return [f"No forecast for {miles:,.0f} mi of route {rid}, so its risk may be understated." for rid, miles in gaps]
+
+
 def build_plan(req: PlanRequest) -> dict:
     simulated = "-storm" if settings.WEATHER.get("SIMULATE_STORM") else ""
     cache_key = f"plan:{PLAN_CACHE_VERSION}{simulated}:{req.cache_key()}"
     if (hit := cache.get(cache_key)) is not None:
-        return hit
+        # Same trip and instant; labels and the display zone are this request's own.
+        return {**hit, "inputs": _inputs_payload(req)}
 
     started = time.perf_counter()
     departure = req.departure_utc.timestamp()
@@ -139,11 +158,17 @@ def build_plan(req: PlanRequest) -> dict:
     timed = [_time_route(ROUTE_IDS[i], r, req) for i, r in enumerate(options.routes)]
     routed = time.perf_counter()
 
-    # One bulk weather fetch for every checkpoint of every route.
+    # One bulk weather fetch for every checkpoint of every route. If the forecast
+    # service is down, still return the routes, clearly marked as unassessed.
     raw_points = [cp.point for t in timed for cp in t.checkpoints]
     snapped = weather.snap_all(raw_points, settings.WEATHER["MAX_CHECKPOINT_LOCATIONS"])
     last_eta = departure + max(t.elapsed[-1] for t in timed)
-    forecasts = weather.fetch_forecasts(snapped, departure, last_eta)
+    try:
+        forecasts = weather.fetch_forecasts(snapped, departure, last_eta)
+        forecast_error = None
+    except UpstreamError as exc:
+        log.warning("plan without forecast: %s", exc)
+        forecasts, forecast_error = {}, exc
     fetched = time.perf_counter()
     snapped_iter = iter(snapped)
 
@@ -155,7 +180,8 @@ def build_plan(req: PlanRequest) -> dict:
         checkpoints_payload = []
         for cp, elapsed in zip(t.checkpoints, t.elapsed):
             eta = departure + elapsed
-            sample = forecasts[next(snapped_iter)].at(eta)
+            series = forecasts.get(next(snapped_iter))
+            sample = series.at(eta) if series else None
             assessment = assess(sample.wind_mph, sample.rain_in_hr, sample.snow_in_hr, req.load_lb) if sample else None
             level = assessment.level if assessment else None
             summary.add(level, cp.covered_miles)
@@ -205,20 +231,15 @@ def build_plan(req: PlanRequest) -> dict:
     plan = {
         "plan_id": req.cache_key(),
         "generated_utc": iso_utc(datetime.now(UTC).timestamp()),
-        "inputs": {
-            "origin": {"lat": req.origin[0], "lon": req.origin[1], "label": req.origin_label},
-            "destination": {"lat": req.destination[0], "lon": req.destination[1], "label": req.destination_label},
-            "departure_local": req.departure_local.isoformat(timespec="minutes"),
-            "timezone": req.timezone,
-            "load_weight_lb": req.load_lb,
-            "interval_mi": req.interval_mi,
-            "hos_breaks": req.hos_breaks,
-        },
+        "inputs": _inputs_payload(req),
         "departure_utc": iso_utc(departure),
         "truck": {"gross_weight_lb": round(truck.load_lb + truck.tare_lb), "max_speed_mph": truck.max_speed_mph},
         "engine": options.engine,
         "notes": options.notes,
-        "warnings": plan_warnings(best_summary),
+        "warnings": ([f"Weather risk couldn't be assessed: {forecast_error.service} is unavailable right now. "
+                      "Routes are ranked by travel time; plan again in a minute."]
+                     if forecast_error else plan_warnings(best_summary) + _coverage_warnings(routes_payload)),
+        "forecast_available": forecast_error is None,
         "rules": rules_table(),
         "routes": routes_payload,
         "recommendation": recommendation,
@@ -228,7 +249,8 @@ def build_plan(req: PlanRequest) -> dict:
             "load_weight_lb": req.load_lb,
         },
     }
-    cache.set(cache_key, plan, PLAN_CACHE_S)
+    if forecast_error is None:  # never cache a plan that is missing its forecast
+        cache.set(cache_key, plan, PLAN_CACHE_S)
     log.info("plan %s: %d routes via %s in %.1fs, %d forecast points in %.1fs, total %.1fs",
              plan["plan_id"], len(timed), options.engine, routed - started, len(forecasts),
              fetched - routed, time.perf_counter() - started)

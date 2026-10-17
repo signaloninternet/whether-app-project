@@ -22,7 +22,7 @@ export interface PlanInputs {
   origin: { lat: number; lon: number; label: string };
   destination: { lat: number; lon: number; label: string };
   departure: string; // wall-clock at the origin, YYYY-MM-DDTHH:MM
-  timezone: string;
+  timezone?: string; // the origin's IANA zone; the API resolves it from the origin when omitted
   load_weight_lb: number;
   interval_mi: IntervalMi;
   hos_breaks: boolean;

@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import math
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from rest_framework import serializers
 
-from .services.geo import decode_polyline
+from .services.geo import decode_polyline, haversine_m
 from .services.sampling import ALLOWED_INTERVALS_MI
 
 MAX_LOAD_LB = 80_000
+MAX_CORRIDOR_SPAN_KM = 7_000  # coast to coast is ~4,500 km
+SHARED_ENDPOINT_KM = 50
 MAX_DEPARTURE_AHEAD = timedelta(days=7)
 DEPARTURE_GRACE = timedelta(hours=1)
 
@@ -75,6 +78,18 @@ class HeatmapRequestSerializer(serializers.Serializer):
             if len(line) < 2 or any(not (-90 <= lat <= 90 and -180 <= lon <= 180) for lat, lon in line):
                 raise serializers.ValidationError("Each route needs at least two valid points.")
             lines.append(line)
+        # These are alternatives for one trip: same ends, continental extent at most.
+        if any(haversine_m(line[0], lines[0][0]) > SHARED_ENDPOINT_KM * 1000
+               or haversine_m(line[-1], lines[0][-1]) > SHARED_ENDPOINT_KM * 1000 for line in lines):
+            raise serializers.ValidationError("Routes must share their origin and destination.")
+        # Measure the box the grid will actually cover (it does not wrap the antimeridian).
+        lats = [lat for line in lines for lat, _ in line]
+        lons = [lon for line in lines for _, lon in line]
+        mid_lat = math.radians((min(lats) + max(lats)) / 2)
+        height_km = (max(lats) - min(lats)) * 111.2
+        width_km = (max(lons) - min(lons)) * 111.2 * max(0.1, math.cos(mid_lat))
+        if max(height_km, width_km) > MAX_CORRIDOR_SPAN_KM:
+            raise serializers.ValidationError("The routes cover too large an area for a corridor heatmap.")
         return lines
 
     def validate_departure_utc(self, value: datetime) -> datetime:

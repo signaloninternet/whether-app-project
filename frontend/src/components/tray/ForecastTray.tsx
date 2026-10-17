@@ -23,6 +23,7 @@ export function ForecastTray({ compact = false }: { compact?: boolean }) {
   const layer = useStore((s) => s.heatLayer);
   const visible = useStore((s) => s.heatVisible);
   const heatStatus = useStore((s) => s.heatStatus);
+  const heatNote = useStore((s) => s.heatNote);
   usePlayback(playing);
   if (!plan) return null;
 
@@ -39,7 +40,7 @@ export function ForecastTray({ compact = false }: { compact?: boolean }) {
         </button>
         <div className={styles.time}>
           <strong className="tabular">{formatDayTime(at, tz)} <span>{zoneAbbreviation(tz, at)}</span></strong>
-          <span>+{Math.round(hour)} h · {statusText(heatStatus)}</span>
+          <span>+{Math.round(hour)} h · {heatNote ?? statusText(heatStatus)}</span>
         </div>
         <div className={styles.controls}>
           {compact ? (
@@ -67,7 +68,7 @@ export function ForecastTray({ compact = false }: { compact?: boolean }) {
       <Timeline plan={plan} hour={hour} departure={departure} />
       {heatStatus === "error" ? (
         <p className={styles.error}>
-          The forecast grid didn't load. <button type="button" onClick={loadHeatmap}>Retry</button>
+          The forecast grid didn't load. <button type="button" onClick={() => loadHeatmap()}>Retry</button>
         </p>
       ) : (
         <Legend layer={layer} rules={plan.rules} />

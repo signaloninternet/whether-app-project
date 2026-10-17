@@ -116,13 +116,17 @@ def recommend(routes: list[ScoredRoute]) -> dict:
     if len(ordered) == 1:
         result["headline"] = f"Route {best.id} is the only route available."
         return result
+    if all(r.summary.known_miles == 0 for r in routes):
+        result["decided_by"] = "travel_time"
+        result["headline"] = f"Route {best.id}: fastest. Weather risk is unknown."
+        result["reasons"].append("No forecast was available, so routes are ranked by travel time only.")
+        return result
 
     runner_up = ordered[1]
     decisive = next(c for c, a, b in zip(CRITERIA, best.key(), runner_up.key()) if a != b) \
         if best.key() != runner_up.key() else CRITERIA[-1]
     result["decided_by"] = decisive.key
 
-    others = ordered[1:]
     if decisive.key == "travel_time":
         result["headline"] = f"Route {best.id}: same weather risk, shortest travel time."
     elif decisive.key == "avg_risk":
@@ -130,14 +134,17 @@ def recommend(routes: list[ScoredRoute]) -> dict:
     else:
         result["headline"] = f"Route {best.id}: fewest {decisive.label.removesuffix(' miles')} miles."
 
-    # Explain each rule up to and including the decisive one.
+    # Explain each rule up to and including the decisive one. A route drops out of
+    # the comparison at the rule that ruled it out, so later lines only compare
+    # routes still in contention (the sort guarantees the best is lowest among them).
+    contenders = ordered[1:]
     for c in CRITERIA[: CRITERIA.index(decisive) + 1]:
         mine = c.value(best.summary, best.travel_s)
-        theirs = ", ".join(f"{_fmt(c, c.value(o.summary, o.travel_s))} on {o.id}" for o in others)
-        if c is decisive:
+        worse = [o for o in contenders if c.value(o.summary, o.travel_s) != mine]
+        if worse:
+            theirs = ", ".join(f"{_fmt(c, c.value(o.summary, o.travel_s))} on {o.id}" for o in worse)
             result["reasons"].append(f"{c.label}: {_fmt(c, mine)} vs {theirs}.")
-        elif any(c.value(o.summary, o.travel_s) != mine for o in others):
-            result["reasons"].append(f"{c.label}: {_fmt(c, mine)} (others {theirs}).")
+            contenders = [o for o in contenders if o not in worse]
         elif c.unit == "mi":
             result["reasons"].append(f"{c.label}: tied at {_fmt(c, mine)}.")
     return result

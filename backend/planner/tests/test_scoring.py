@@ -83,3 +83,15 @@ def test_plan_warnings():
     assert plan_warnings(summary(low=10)) == []
     assert "Severe" in plan_warnings(summary(low=10, severe=5))[0]
     assert "No Travel" in plan_warnings(summary(low=10, no_travel=5))[0]
+
+
+def test_reasons_only_compare_routes_still_in_contention():
+    # B is ruled out by No Travel miles; the Severe line must then only mention A.
+    routes = [
+        ScoredRoute("A", summary(low=2700, severe=100, high=100), travel_s=88 * 3600),
+        ScoredRoute("B", summary(low=2700, no_travel=50, high=100), travel_s=89 * 3600),
+        ScoredRoute("C", summary(low=3000), travel_s=91 * 3600),
+    ]
+    rec = recommend(routes)
+    assert rec["route_id"] == "C" and rec["decided_by"] == "severe_miles"
+    assert rec["reasons"] == ["No Travel miles: 0 mi vs 50 mi on B.", "Severe miles: 0 mi vs 100 mi on A."]
