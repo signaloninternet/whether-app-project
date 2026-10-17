@@ -1,0 +1,238 @@
+/* Shared controls, each modelled on a specific reference component. */
+
+/* "Make a map" / "Copy link": solid blue, slightly darker edge */
+.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: var(--radius-button);
+  background: var(--accent, var(--blue));
+  border: 1px solid color-mix(in srgb, var(--accent, var(--blue)) 82%, black);
+  color: #fff;
+  font-weight: 600;
+  font-size: var(--text-body);
+  transition: background 0.15s, transform 0.1s;
+}
+.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent, var(--blue)) 90%, black);
+}
+.primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.primary:disabled {
+  background: #8a8a8a;
+  border-color: #7a7a7a;
+}
+.block {
+  width: 100%;
+}
+
+/* "Add spot to section" / small "Share": blue tint, blue ink */
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius-button);
+  background: var(--blue-tint);
+  color: var(--blue-ink);
+  font-weight: 600;
+  font-size: var(--text-small);
+  transition: background 0.15s;
+}
+.secondary:hover {
+  background: var(--blue-tint-hover);
+}
+
+/* The round grey rail buttons and the "..." button */
+.iconButton {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  color: var(--ink-2);
+  transition: background 0.15s, color 0.15s;
+}
+.iconButton:hover {
+  background: var(--surface-3);
+  color: var(--ink-1);
+}
+.iconButton[aria-pressed="true"] {
+  background: var(--dark);
+  color: #fff;
+}
+
+/* View / Edit toggle: pill with a knob, dark when on */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 4px 0 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  color: var(--ink-2);
+  font-weight: 600;
+  font-size: var(--text-small);
+  transition: background 0.2s, color 0.2s;
+}
+.toggle .knob {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  transition: transform 0.2s var(--ease);
+}
+.toggle[aria-checked="false"] {
+  flex-direction: row-reverse;
+  padding: 0 12px 0 4px;
+}
+.toggle[aria-checked="true"] {
+  background: var(--dark);
+  color: #fff;
+}
+
+/* Share-modal switch: "Off" / "On" inside a small track */
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 56px;
+  height: 28px;
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  background: #e7e7e6;
+  border: 1px solid var(--hairline);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-1);
+  transition: background 0.2s;
+  flex: none;
+}
+.switch .knob {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s var(--ease);
+}
+.switch .label {
+  position: absolute;
+  right: 8px;
+}
+.switch[aria-checked="true"] {
+  background: var(--blue);
+  color: #fff;
+}
+.switch[aria-checked="true"] .knob {
+  transform: translateX(28px);
+}
+.switch[aria-checked="true"] .label {
+  right: auto;
+  left: 8px;
+}
+
+/* "Activity" filter chip and segmented choices */
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+}
+.segment {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--ink-2);
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.segment:hover {
+  color: var(--ink-1);
+}
+.segment[aria-checked="true"] {
+  background: #fff;
+  color: var(--ink-1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+/* "Free Plan" chip */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  color: var(--ink-1);
+  white-space: nowrap;
+}
+
+/* Risk pill: a coloured dot + label (never colour alone) */
+.riskPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 9px 0 7px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-micro);
+  font-weight: 700;
+  color: var(--ink-1);
+  white-space: nowrap;
+}
+.riskDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px #fff;
+  flex: none;
+}
+
+/* Emoji sticker with a die-cut white outline, as on the reference's spots */
+.sticker {
+  display: inline-grid;
+  place-items: center;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  line-height: 1;
+  filter: drop-shadow(1.6px 0 0 #fff) drop-shadow(-1.6px 0 0 #fff) drop-shadow(0 1.6px 0 #fff)
+    drop-shadow(0 -1.6px 0 #fff) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
+  user-select: none;
+}
+
+/* Red numbered badge on a sticker */
+.badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--badge-red);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  font-variant-numeric: tabular-nums;
+}

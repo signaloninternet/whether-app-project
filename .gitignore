@@ -13,4 +13,4 @@ backend/db.sqlite3
 .DS_Store
 
 # Design reference screenshots (third-party app captures); kept locally, not published.
-ui/
+/ui/
