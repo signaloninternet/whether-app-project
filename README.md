@@ -13,6 +13,8 @@ real third-party services, and none of them needs an API key.
 | Desktop | Route detail | Mobile |
 | --- | --- | --- |
 | ![Results](docs/screenshots/desktop-results.png) | ![Route detail](docs/screenshots/route-detail.png) | ![Mobile](docs/screenshots/mobile.png) |
+| **Map views** | **Satellite** | **Terrain, 3D** |
+| ![Themes](docs/screenshots/themes.png) | ![Satellite](docs/screenshots/satellite.png) | ![Terrain](docs/screenshots/terrain-3d.png) |
 
 <sub>The risk colours in these shots come from the development storm overlay (see [Testing](#testing)); real
 forecasts are often calm.</sub>
@@ -162,7 +164,8 @@ Open http://localhost:5173 and try one of the example trips.
 ### Testing
 
 ```bash
-cd backend && .venv/bin/pytest      # 104 tests: rules, sampling, HOS, weather hours, ranking, routing, API
+cd backend && .venv/bin/pytest      # 113 tests, 95% coverage: rules, sampling, HOS, weather hours, ranking,
+                                    # routing, heatmap, API, and every upstream adapter against mocked HTTP
 cd frontend && npm test             # time zones/DST, geometry, ramps, share links
 cd frontend && npm run typecheck
 ```
@@ -190,6 +193,7 @@ pre-compressed, immutable asset caching).
 | `MAX_CHECKPOINT_LOCATIONS`, `MAX_HEATMAP_CELLS` | 150, 120 | Forecast budget per plan |
 | `THROTTLE_PLAN`, `THROTTLE_HEATMAP`, `THROTTLE_GEOCODE` | 20/min, 20/min, 120/min | Per-IP API throttles |
 | `CORS_ALLOWED_ORIGINS` | – | Only if the frontend is hosted separately (`VITE_API_BASE` at build) |
+| `HTTP_USER_AGENT` | `routecast/1.0 (…)` | Identify your deployment (add a contact) to the public services |
 
 ## API
 

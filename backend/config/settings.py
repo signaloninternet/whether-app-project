@@ -153,9 +153,9 @@ TRUCK = {
     "TARE_WEIGHT_LB": int(os.environ.get("TRUCK_TARE_WEIGHT_LB", "35000")),
     "MAX_SPEED_MPH": float(os.environ.get("TRUCK_MAX_SPEED_MPH", "65")),
 }
-HTTP_USER_AGENT = os.environ.get(
-    "HTTP_USER_AGENT", "routecast-truck-routing/1.0 (+https://github.com/routecast)"
-)
+# Public routing/geocoding services ask clients to identify themselves; set a
+# contact URL or email here for a production deployment.
+HTTP_USER_AGENT = os.environ.get("HTTP_USER_AGENT", "routecast/1.0 (weather-aware truck routing)")
 
 LOGGING = {
     "version": 1,
