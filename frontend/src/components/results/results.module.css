@@ -1,0 +1,456 @@
+.title {
+  margin: 8px 4px 0;
+  font-size: var(--text-title);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+}
+
+.subtitle {
+  margin: 6px 4px 0;
+  font-size: var(--text-small);
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 4px 0;
+}
+
+/* Section heading, as "late night snacking spots" + description */
+.sectionHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 22px 6px 10px;
+}
+
+.sectionTitle {
+  font-size: var(--text-section);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.sectionText {
+  margin-top: 2px;
+  font-size: var(--text-small);
+  color: var(--ink-3);
+  line-height: 1.4;
+}
+
+.notice {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 11px 12px;
+  border-radius: var(--radius-card);
+  font-size: var(--text-small);
+  line-height: 1.4;
+}
+
+.noticeWarn {
+  background: var(--risk-3-tint);
+  color: #5b0b1d;
+}
+
+.noticeInfo {
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+
+/* Recommendation: the blue "selected result" tint */
+.recommend {
+  margin-top: 14px;
+  padding: 13px 14px;
+  border-radius: var(--radius-card);
+  background: var(--blue-tint);
+}
+
+.recommendLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-micro);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--blue-ink);
+}
+
+.recommendHeadline {
+  margin-top: 4px;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--ink-1);
+}
+
+.reasons {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  font-size: var(--text-small);
+  color: #26456f;
+}
+
+.reasons li {
+  display: flex;
+  gap: 6px;
+}
+
+.reasons li::before {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+
+/* Spot card: grey rounded card, sticker left, title + description */
+.cards {
+  display: grid;
+  gap: 8px;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 4px 12px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 12px 12px 10px;
+  border-radius: var(--radius-card);
+  background: var(--surface-2);
+  text-align: left;
+  border: 1.5px solid transparent;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.card:hover {
+  background: var(--surface-3);
+}
+
+.card:active {
+  transform: scale(0.995);
+}
+
+.card[aria-current="true"] {
+  background: var(--blue-tint);
+  border-color: color-mix(in srgb, var(--blue) 35%, transparent);
+}
+
+.cardMain {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 650;
+  font-size: var(--text-body);
+  line-height: 1.25;
+}
+
+.cardTitle span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardMeta {
+  font-size: var(--text-small);
+  color: var(--ink-2);
+}
+
+.cardRisk {
+  grid-column: 2 / 4;
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.cardStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: var(--text-micro);
+  color: var(--ink-2);
+}
+
+.cardStats b {
+  color: var(--ink-1);
+  font-weight: 650;
+}
+
+.tag {
+  flex: none;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tagBlue {
+  background: var(--blue);
+  color: #fff;
+}
+
+.tagGray {
+  background: #e3e3e1;
+  color: var(--ink-2);
+}
+
+.chevron {
+  color: var(--ink-3);
+}
+
+/* Stacked risk bar: 2px surface gaps between segments, rounded data ends */
+.bar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+}
+
+.bar.large {
+  height: 12px;
+}
+
+.segment {
+  min-width: 3px;
+  border-radius: 2px;
+  transition: filter 0.12s;
+}
+
+.segment:first-child {
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+
+.segment:last-child {
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+.segment:hover {
+  filter: brightness(1.12) saturate(1.1);
+}
+
+.footnote {
+  margin: 18px 6px 4px;
+  font-size: var(--text-micro);
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+
+.footnote a {
+  color: var(--ink-2);
+}
+
+/* Route detail */
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.stat {
+  padding: 10px 12px;
+  border-radius: var(--radius-field);
+  background: var(--surface-2);
+}
+
+.statLabel {
+  font-size: var(--text-micro);
+  color: var(--ink-2);
+}
+
+.statValue {
+  margin-top: 2px;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.statSub {
+  font-size: var(--text-micro);
+  color: var(--ink-3);
+}
+
+.legend {
+  display: grid;
+  gap: 2px;
+  margin-top: 10px;
+}
+
+.legendRow {
+  display: grid;
+  grid-template-columns: 12px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px;
+  font-size: var(--text-small);
+  color: var(--ink-2);
+}
+
+.legendRow b {
+  color: var(--ink-1);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.legendRow span:last-child {
+  width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 2px 10px;
+}
+
+/* Checkpoint rows */
+.checkpoint {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 12px;
+  align-items: start;
+  width: 100%;
+  padding: 11px 12px 11px 10px;
+  border-radius: var(--radius-card);
+  background: var(--surface-2);
+  text-align: left;
+  border: 1.5px solid transparent;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 92px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.checkpoint:hover {
+  background: var(--surface-3);
+}
+
+.checkpoint[aria-current="true"] {
+  background: var(--blue-tint);
+  border-color: color-mix(in srgb, var(--blue) 35%, transparent);
+}
+
+.cpTitle {
+  font-weight: 650;
+  font-size: var(--text-body);
+}
+
+.cpText {
+  font-size: var(--text-small);
+  color: var(--ink-2);
+  line-height: 1.4;
+}
+
+.cpRule {
+  font-size: var(--text-micro);
+  color: #6b1830;
+  font-weight: 600;
+}
+
+.stop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-card);
+  background: var(--peach);
+  font-size: var(--text-small);
+  color: var(--ink-2);
+}
+
+.stop strong {
+  color: var(--ink-1);
+  font-weight: 650;
+}
+
+.list {
+  display: grid;
+  gap: 8px;
+}
+
+.more {
+  margin-top: 8px;
+  width: 100%;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cpSticker {
+  position: relative;
+}
+
+/* Numbered badge, in the checkpoint's risk colour (the label next to it names the level) */
+.cpBadge {
+  position: absolute;
+  top: -5px;
+  right: -8px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.cpBody {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.cpMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.cpElapsed {
+  font-size: var(--text-micro);
+  color: var(--ink-3);
+}
+
+.emptyList {
+  padding: 8px 6px;
+  font-size: var(--text-small);
+  color: var(--ink-3);
+}

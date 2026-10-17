@@ -1,0 +1,18 @@
+# Render blueprint: New > Blueprint > pick this repo. Free plan works (cold starts ~30 s).
+services:
+  - type: web
+    name: routecast
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: .onrender.com
+      - key: WEB_CONCURRENCY
+        value: "2"
+      # Optional: lift the public services' limits in production.
+      # - key: OPEN_METEO_API_KEY      # commercial Open-Meteo key
+      # - key: VALHALLA_URL            # e.g. self-hosted Valhalla (no distance limit)
+      # - key: VALHALLA_API_KEY        # e.g. Stadia Maps

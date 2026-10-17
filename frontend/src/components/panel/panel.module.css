@@ -1,0 +1,188 @@
+/* The reference's floating left card: icon rail + content column */
+.panel {
+  position: absolute;
+  z-index: 3;
+  top: var(--panel-gap);
+  left: var(--panel-gap);
+  bottom: var(--panel-gap);
+  width: var(--panel-width);
+  display: flex;
+  pointer-events: none;
+}
+
+.card {
+  display: flex;
+  width: 100%;
+  max-height: 100%;
+  align-self: flex-start;
+  background: var(--surface);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-2);
+  border: 1px solid var(--hairline);
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.rail {
+  width: var(--rail-width);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 0 12px;
+  gap: 10px;
+  border-right: 1px solid var(--hairline);
+  background: var(--surface);
+}
+
+.railSpacer {
+  flex: 1;
+}
+
+.logo {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #8f8f8f;
+  color: #fff;
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.04em;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.logo:hover {
+  background: #6f6f6f;
+}
+
+.column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 2 * var(--panel-gap));
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px 10px;
+  flex: none;
+}
+
+.back {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 34px;
+  color: var(--ink-2);
+  flex: none;
+}
+
+.back:hover {
+  color: var(--ink-1);
+}
+
+/* "Search this map" pill, reused as the trip pill */
+.pill {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  color: var(--ink-3);
+  font-size: var(--text-small);
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.pill:hover {
+  background: var(--surface-3);
+}
+
+.pill strong {
+  color: var(--ink-1);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 12px 16px;
+  scrollbar-width: thin;
+}
+
+.footer {
+  flex: none;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--hairline);
+  background: var(--surface);
+}
+
+/* Dropdown menu (the reference's "Route / More options" menu) */
+.menuWrap {
+  position: relative;
+  flex: none;
+}
+
+.menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 210px;
+  padding: 6px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: var(--shadow-3);
+  border: 1px solid var(--hairline);
+  animation: pop 0.14s var(--ease);
+}
+
+.menuLabel {
+  padding: 6px 10px 4px;
+  font-size: var(--text-micro);
+  color: var(--ink-3);
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: var(--text-body);
+  text-align: left;
+}
+
+.menuItem:hover {
+  background: var(--surface-2);
+}
+
+.menuDivider {
+  height: 1px;
+  margin: 5px 4px;
+  background: var(--hairline);
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}

@@ -1,0 +1,81 @@
+/*
+ * Design tokens taken from the PamPam reference screens (ui/): a 1440x900
+ * viewport captured at 1.333x, so sizes below are the measured CSS pixels.
+ * The UI is light-only by design (the reference has no dark chrome); dark
+ * looks are provided by the map themes instead.
+ */
+:root {
+  color-scheme: light;
+
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Instrument Serif", "Iowan Old Style", "Times New Roman", serif;
+
+  /* ink */
+  --ink-1: #141414;
+  --ink-2: #5c5c5c;
+  --ink-3: #858585; /* reference uses ~#9a9a9a; darkened for legibility (3.7:1) */
+  --ink-inverse: #ffffff;
+
+  /* surfaces */
+  --page: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f3f3f2; /* fields, cards */
+  --surface-3: #ebebea; /* hover on surface-2 */
+  --hairline: rgba(17, 17, 17, 0.08);
+  --hairline-strong: rgba(17, 17, 17, 0.14);
+  --peach: #fbeee6; /* suggestion and result rows */
+  --peach-hover: #f7e3d8;
+  --scrim: rgba(17, 17, 17, 0.45);
+
+  /* brand blue (Share, Make a map, Copy link) */
+  --blue: #3b7be0;
+  --blue-hover: #306fd3;
+  --blue-press: #2961bd;
+  --blue-edge: #2c66c4;
+  --blue-tint: #dcebfb; /* selected rows, secondary buttons */
+  --blue-tint-hover: #cfe3fa;
+  --blue-ink: #1f4f99;
+
+  --dark: #3b4046; /* Edit toggle, dark pills */
+  --pill-gray: #7b8287; /* route duration pills */
+  --badge-red: #e5322d; /* numbered badges */
+
+  /* risk status scale, validated with the dataviz palette checker (see README) */
+  --risk-0: #237b4d;
+  --risk-1: #cbb120;
+  --risk-2: #da5801;
+  --risk-3: #af0532;
+  --risk-4: #554185;
+  --risk-unknown: #9aa0a6;
+  --risk-0-tint: #e3f1e8;
+  --risk-1-tint: #f7f1d2;
+  --risk-2-tint: #fbe6d9;
+  --risk-3-tint: #f6dde2;
+  --risk-4-tint: #e8e3f2;
+
+  /* elevation */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.05);
+  --shadow-2: 0 1px 3px rgba(0, 0, 0, 0.06), 0 10px 30px rgba(0, 0, 0, 0.12);
+  --shadow-3: 0 2px 8px rgba(0, 0, 0, 0.1), 0 24px 60px rgba(0, 0, 0, 0.2);
+
+  /* shape */
+  --radius-panel: 18px;
+  --radius-card: 12px;
+  --radius-field: 10px;
+  --radius-button: 8px;
+  --radius-pill: 999px;
+
+  /* layout */
+  --panel-gap: 18px;
+  --rail-width: 52px;
+  --panel-width: 404px;
+
+  /* type scale */
+  --text-title: 27px;
+  --text-section: 18px;
+  --text-body: 15px;
+  --text-small: 13px;
+  --text-micro: 12px;
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}

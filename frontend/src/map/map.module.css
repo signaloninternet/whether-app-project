@@ -1,0 +1,40 @@
+.map {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #f4f4f2;
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* Small white card, like the reference's floating spot toolbar */
+.tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  display: grid;
+  gap: 4px;
+  max-width: 280px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: var(--shadow-2);
+  font-size: var(--text-small);
+  color: var(--ink-2);
+  pointer-events: none;
+  will-change: transform;
+}
+
+.tooltip strong {
+  color: var(--ink-1);
+  font-weight: 650;
+}
+
+.tipMuted {
+  color: var(--ink-3);
+  font-size: var(--text-micro);
+}
