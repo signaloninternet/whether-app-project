@@ -246,4 +246,3 @@ frontend/src/
   state/store.ts     zustand store: trip draft, plan/heatmap lifecycle, selection, timeline
   lib/               geometry, time zones, risk colours, share links (+ unit tests)
 ```
-# whether-app-project
