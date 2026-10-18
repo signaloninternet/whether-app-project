@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Checkpoint, Plan, Route } from "../../api/types";
 import { RISK, riskColor, weatherSticker } from "../../lib/risk";
-import { formatDayTime, formatDuration, localHour } from "../../lib/time";
+import { formatDayTime, formatDuration } from "../../lib/time";
 import { focusCheckpoint, useStore } from "../../state/store";
 import { RiskPill, Segmented, Sticker, ui } from "../ui/controls";
 import { Icon } from "../ui/Icon";
@@ -170,7 +170,7 @@ function CheckpointRow({ cp, plan, route, active }: { cp: Checkpoint; plan: Plan
     <button ref={ref} type="button" className={styles.checkpoint} aria-current={active}
       onClick={() => focusCheckpoint(route.id, cp.index)}>
       <span className={styles.cpSticker}>
-        <Sticker emoji={weatherSticker(w, cp.risk?.drivers.includes("wind") ?? false, localHour(cp.eta_utc, tz))} size={26} />
+        <Sticker emoji={weatherSticker(w, cp.risk?.drivers.includes("wind") ?? false)} size={26} />
         <span className={styles.cpBadge} style={{ background: riskColor(level) }}>{cp.index + 1}</span>
       </span>
       <span className={styles.cpBody}>

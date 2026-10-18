@@ -99,7 +99,7 @@ export const RISK_HEAT: RGBA[] = RISK.map((r, i) => hex(r.color, [0.12, 0.5, 0.5
 // --- weather stickers ------------------------------------------------------------
 
 /** Emoji sticker for a checkpoint: what a driver would notice first. */
-export function weatherSticker(weather: Weather | null, windDriven: boolean, localHour: number): string {
+export function weatherSticker(weather: Weather | null, windDriven: boolean): string {
   if (!weather) return "❔";
   const code = weather.code ?? 0;
   if (windDriven || (weather.wind_mph >= 25 && code < 51)) return "💨";
@@ -110,9 +110,9 @@ export function weatherSticker(weather: Weather | null, windDriven: boolean, loc
   if (code >= 51) return "🌦️";
   if (code === 45 || code === 48) return "🌫️";
   if (code === 3) return "☁️";
-  const night = localHour < 6 || localHour >= 20;
-  if (code === 2) return night ? "☁️" : "⛅";
-  return night ? "🌙" : code === 1 ? "🌤️" : "☀️";
+  if (code === 2) return weather.is_day ? "⛅" : "☁️";
+  if (!weather.is_day) return "🌙";
+  return code === 1 ? "🌤️" : "☀️";
 }
 
 export function describeWeather(w: Weather): string {

@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 from bisect import bisect_right
 from collections.abc import Sequence
+from datetime import UTC, datetime
 
 LatLon = tuple[float, float]
 
@@ -189,6 +190,31 @@ def bbox(coords: Sequence[LatLon]) -> tuple[float, float, float, float]:
     lats = [c[0] for c in coords]
     lons = [c[1] for c in coords]
     return min(lons), min(lats), max(lons), max(lats)
+
+
+# --- Sun position (day or night at a checkpoint) -----------------------------
+
+SUNSET_ELEVATION_DEG = -0.833  # sun's upper edge on the horizon, with refraction
+
+
+def sun_elevation_deg(point: LatLon, epoch: float) -> float:
+    """Height of the sun above the horizon (NOAA general solar position, ~1-2 min at sunrise/sunset)."""
+    t = datetime.fromtimestamp(epoch, UTC)
+    minutes = t.hour * 60 + t.minute + t.second / 60
+    g = 2 * math.pi / 365 * (t.timetuple().tm_yday - 1 + (minutes / 60 - 12) / 24)
+    eq_time = 229.18 * (0.000075 + 0.001868 * math.cos(g) - 0.032077 * math.sin(g)
+                        - 0.014615 * math.cos(2 * g) - 0.040849 * math.sin(2 * g))
+    decl = (0.006918 - 0.399912 * math.cos(g) + 0.070257 * math.sin(g) - 0.006758 * math.cos(2 * g)
+            + 0.000907 * math.sin(2 * g) - 0.002697 * math.cos(3 * g) + 0.00148 * math.sin(3 * g))
+    hour_angle = math.radians((minutes + eq_time + 4 * point[1]) / 4 - 180)
+    lat = math.radians(point[0])
+    cos_zenith = math.sin(lat) * math.sin(decl) + math.cos(lat) * math.cos(decl) * math.cos(hour_angle)
+    return 90 - math.degrees(math.acos(max(-1.0, min(1.0, cos_zenith))))
+
+
+def is_daylight(point: LatLon, epoch: float) -> bool:
+    """Between sunrise and sunset at the point (what a driver sees, whatever the clock says)."""
+    return sun_elevation_deg(point, epoch) > SUNSET_ELEVATION_DEG
 
 
 # --- Web Mercator (the heatmap grid is regular in projected space) -----------

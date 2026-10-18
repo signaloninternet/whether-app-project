@@ -37,6 +37,7 @@ export function MapTooltip({ target, x, y }: { target: MapTarget; x: number; y: 
         <strong>Mile {Math.round(cp.mile).toLocaleString()} · {formatDayTime(cp.eta_utc, tz)}</strong>
         {cp.weather ? (
           <span>
+            {cp.weather.condition}{cp.weather.temp_f != null ? ` · ${Math.round(cp.weather.temp_f)}°F` : ""} ·{" "}
             {Math.round(cp.weather.wind_mph)} mph wind · {cp.weather.rain_in_hr.toFixed(2)}″ rain · {cp.weather.snow_in_hr.toFixed(2)}″ snow
           </span>
         ) : <span>No forecast for this hour</span>}

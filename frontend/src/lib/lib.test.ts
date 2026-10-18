@@ -80,14 +80,18 @@ describe("risk ramps", () => {
 });
 
 describe("weather stickers", () => {
-  const w = { wind_mph: 10, gust_mph: 14, rain_in_hr: 0, snow_in_hr: 0, temp_f: 50, code: 0, condition: "Clear", hour_utc: "" };
+  const w = {
+    wind_mph: 10, gust_mph: 14, rain_in_hr: 0, snow_in_hr: 0, temp_f: 50, code: 0, is_day: true, condition: "Clear sky",
+    hour_utc: "",
+  };
   it("shows what a driver notices first", () => {
-    expect(weatherSticker(w, false, 13)).toBe("☀️");
-    expect(weatherSticker(w, false, 2)).toBe("🌙");
-    expect(weatherSticker({ ...w, code: 95 }, false, 13)).toBe("⛈️");
-    expect(weatherSticker({ ...w, code: 73, snow_in_hr: 0.6 }, false, 13)).toBe("🌨️");
-    expect(weatherSticker({ ...w, wind_mph: 40 }, true, 13)).toBe("💨");
-    expect(weatherSticker(null, false, 13)).toBe("❔");
+    expect(weatherSticker(w, false)).toBe("☀️");
+    expect(weatherSticker({ ...w, is_day: false, condition: "Clear night" }, false)).toBe("🌙");
+    expect(weatherSticker({ ...w, code: 2, is_day: false }, false)).toBe("☁️");
+    expect(weatherSticker({ ...w, code: 95 }, false)).toBe("⛈️");
+    expect(weatherSticker({ ...w, code: 73, snow_in_hr: 0.6 }, false)).toBe("🌨️");
+    expect(weatherSticker({ ...w, wind_mph: 40 }, true)).toBe("💨");
+    expect(weatherSticker(null, false)).toBe("❔");
   });
 });
 

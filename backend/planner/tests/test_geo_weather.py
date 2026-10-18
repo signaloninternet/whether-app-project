@@ -6,6 +6,7 @@ from planner.services.geo import (
     decode_polyline,
     encode_polyline,
     haversine_m,
+    is_daylight,
     lat_to_mercator_y,
     mercator_y_to_lat,
     simplify,
@@ -49,6 +50,30 @@ def test_slice_line_endpoints():
 def test_mercator_round_trip():
     for lat in (-60.0, 0.0, 33.3, 51.5):
         assert mercator_y_to_lat(lat_to_mercator_y(lat)) == pytest.approx(lat)
+
+
+@pytest.mark.parametrize("point, sunrise, sunset", [
+    # Open-Meteo's daily sunrise/sunset for 2026-10-18 (UTC epochs).
+    ((32.7849, -96.8036), 1_792_326_822, 1_792_367_430),  # Dallas
+    ((39.7469, -104.9871), 1_792_329_210, 1_792_368_963),  # Denver
+    ((61.2654, -149.9274), 1_792_342_254, 1_792_377_452),  # Anchorage
+])
+def test_daylight_follows_the_sun_at_the_point(point, sunrise, sunset):
+    five_min = 5 * 60
+    assert not is_daylight(point, sunrise - five_min)
+    assert is_daylight(point, sunrise + five_min)
+    assert is_daylight(point, sunset - five_min)
+    assert not is_daylight(point, sunset + five_min)
+
+
+def test_sky_conditions_have_night_names():
+    assert weather.condition_name(0, daylight=True) == "Clear sky"
+    assert weather.condition_name(0, daylight=False) == "Clear night"
+    assert weather.condition_name(2, daylight=False) == "Partly cloudy night"
+    assert weather.condition_name(61, daylight=False) == "Light rain"  # rain reads the same after dark
+    assert weather.condition_name(None, daylight=True) == "Unknown"
+    night = series().at(1_000 * HOUR + 60).as_dict(daylight=False)
+    assert night["is_day"] is False and night["condition"] == "Light rain"
 
 
 def series(**overrides) -> HourlyForecast:

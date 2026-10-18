@@ -34,11 +34,6 @@ export function formatHour(iso: string | number, timeZone: string): string {
   return formatter(timeZone, { hour: "numeric" }).format(new Date(iso));
 }
 
-/** Hour of day (0-23) at the instant, in the zone. */
-export function localHour(iso: string | number, timeZone: string): number {
-  return Number(formatter(timeZone, { hour: "numeric", hourCycle: "h23" }).format(new Date(iso))) % 24;
-}
-
 /** "CDT" for the zone at a given instant. */
 export function zoneAbbreviation(timeZone: string, at: number = Date.now()): string {
   const part = formatter(timeZone, { timeZoneName: "short" })

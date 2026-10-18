@@ -82,6 +82,7 @@ def test_plan_end_to_end(fake_world):
     assert plan["warnings"] == []
     assert sum(a["risk"]["miles_by_level"].values()) == pytest.approx(a["distance_mi"], abs=0.2)
     assert a["checkpoints"][0]["eta_utc"] == plan["departure_utc"]
+    assert all(isinstance(cp["weather"]["is_day"], bool) for cp in a["checkpoints"])
     assert len(plan["heatmap_request"]["routes"]) == 3
 
 

@@ -64,6 +64,9 @@ OSRM per-segment durations). That's what makes checkpoint ETAs precise.
 - **Forecast hour:** Open-Meteo reports precipitation as the total for the hour *ending* at each timestamp, while
   wind is instantaneous. A truck at a checkpoint at 14:20 is in the 14:00–15:00 hour, so rain and snow come from the
   15:00 value, and wind is interpolated between 14:00 and 15:00.
+- **Day or night:** each checkpoint's sky is named for the sun's position *there, at its ETA* ("Clear sky" until
+  sunset, then "Clear night"), not the origin's clock. Sunrise and sunset come from NOAA's solar formulas, within
+  ~2 minutes of Open-Meteo's own times.
 - Checkpoints are fetched in bulk (Open-Meteo accepts many coordinates per request) and cached for 20 minutes.
   Long trips snap nearby checkpoints to a shared ~3–5 km grid point, coarsening only as needed to stay inside the
   free tier (≤ 150 forecast locations per plan; model grids are 3–25 km anyway).
@@ -173,7 +176,7 @@ Open http://localhost:5173 and try one of the example trips.
 ### Testing
 
 ```bash
-cd backend && .venv/bin/pytest      # 122 tests, ~95% coverage: rules, sampling, HOS, weather hours, ranking,
+cd backend && .venv/bin/pytest      # 126 tests, ~95% coverage: rules, sampling, HOS, weather hours, ranking,
                                     # routing, heatmap, API, every upstream adapter against mocked HTTP
 cd frontend && npm test             # time zones and DST (matching the API), geometry, ramps, heat blending, links
 cd frontend && npm run typecheck

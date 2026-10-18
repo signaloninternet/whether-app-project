@@ -32,7 +32,7 @@ HOUR = 3600
 
 # WMO weather interpretation codes (Open-Meteo docs), grouped for display.
 WMO_CONDITIONS = {
-    0: "Clear", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+    0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
     45: "Fog", 48: "Freezing fog",
     51: "Light drizzle", 53: "Drizzle", 55: "Heavy drizzle", 56: "Freezing drizzle", 57: "Freezing drizzle",
     61: "Light rain", 63: "Rain", 65: "Heavy rain", 66: "Freezing rain", 67: "Freezing rain",
@@ -41,6 +41,14 @@ WMO_CONDITIONS = {
     85: "Snow showers", 86: "Heavy snow showers",
     95: "Thunderstorm", 96: "Thunderstorm with hail", 99: "Thunderstorm with hail",
 }
+# Sky-only codes read differently once the sun is down.
+NIGHT_CONDITIONS = {0: "Clear night", 1: "Mainly clear night", 2: "Partly cloudy night"}
+
+
+def condition_name(code: int | None, daylight: bool) -> str:
+    if code is None:
+        return "Unknown"
+    return (None if daylight else NIGHT_CONDITIONS.get(code)) or WMO_CONDITIONS.get(code, "Unknown")
 
 
 def floor_hour(epoch: float) -> int:
@@ -61,7 +69,8 @@ class WeatherSample:
     code: int | None
     hour_start: int  # epoch of the forecast hour the sample represents
 
-    def as_dict(self) -> dict:
+    def as_dict(self, daylight: bool) -> dict:
+        """``daylight``: whether the sun is up where and when the truck meets this sample."""
         return {
             "wind_mph": round(self.wind_mph, 1),
             "gust_mph": None if self.gust_mph is None else round(self.gust_mph, 1),
@@ -69,7 +78,8 @@ class WeatherSample:
             "snow_in_hr": round(self.snow_in_hr, 3),
             "temp_f": None if self.temp_f is None else round(self.temp_f, 1),
             "code": self.code,
-            "condition": WMO_CONDITIONS.get(self.code, "Unknown") if self.code is not None else "Unknown",
+            "is_day": daylight,
+            "condition": condition_name(self.code, daylight),
             "hour_utc": iso_utc(self.hour_start),
         }
 

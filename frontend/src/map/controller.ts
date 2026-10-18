@@ -13,7 +13,7 @@ import type { Feature, FeatureCollection } from "geojson";
 import type { Checkpoint, HeatLayer, Heatmap, Plan, Route } from "../api/types";
 import { decodePolyline, haversineM, interpolateKnots, type LngLat, type MeasuredLine, measure, pointAt, unionBounds } from "../lib/geo";
 import { RISK, riskColor, UNKNOWN_COLOR, weatherSticker } from "../lib/risk";
-import { formatDayTime, formatDuration, localHour } from "../lib/time";
+import { formatDayTime, formatDuration } from "../lib/time";
 import { HeatRenderer } from "./heat";
 import { addChrome, handleMissingImage, PILL_IMAGES, stickerId } from "./images";
 import { ANCHOR_ROUTES, buildStyle, DEM_SOURCE } from "./style";
@@ -263,27 +263,30 @@ export class MapController {
         "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 3, 1.2, 10, 2],
       },
     });
-    const stickerLayout = (labelFromZoom: number) => ({
+    // Every checkpoint shows its weather ("Clear night") at any zoom; when zoomed out, collisions thin them
+    // evenly along the route. "cp-sticker" sits above "cp-sticker-low", so risky checkpoints are placed first.
+    const stickerLayout = {
       "icon-image": ["get", "sticker"] as ExpressionSpecification,
-      "icon-size": ["interpolate", ["linear"], ["zoom"], 4, 0.82, 9, 1] as ExpressionSpecification,
+      "icon-size": ["interpolate", ["linear"], ["zoom"], 3, 0.72, 9, 1] as ExpressionSpecification,
       "icon-padding": 1,
       "symbol-sort-key": ["-", 0, ["get", "level"]] as ExpressionSpecification,
-      "text-field": ["step", ["zoom"], "", labelFromZoom, ["get", "label"]] as ExpressionSpecification,
+      "text-field": ["get", "label"] as ExpressionSpecification,
       "text-font": ["Noto Sans Bold"],
       "text-size": 11,
-      "text-offset": [0, 1.55] as [number, number],
-      "text-anchor": "top" as const,
+      // Below the sticker if there's room, else beside it: more labels survive on a dense, zoomed-out route.
+      "text-variable-anchor": ["top", "left", "right", "bottom"] as ("top" | "left" | "right" | "bottom")[],
+      "text-radial-offset": 1.45,
+      "text-justify": "auto" as const,
       "text-optional": true,
-    });
+    };
     map.addLayer({
-      id: "cp-sticker-low", type: "symbol", source: "checkpoints", minzoom: 7.5,
-      layout: stickerLayout(8.5),
+      id: "cp-sticker-low", type: "symbol", source: "checkpoints",
+      layout: stickerLayout,
       paint: { "text-color": "#2b2b2b", "text-halo-color": "#fff", "text-halo-width": 1.4 },
     });
     map.addLayer({
       id: "cp-sticker", type: "symbol", source: "checkpoints",
-      // Risky checkpoints get their ETA earlier: those are the times a driver plans around.
-      layout: stickerLayout(6),
+      layout: stickerLayout,
       paint: { "text-color": "#2b2b2b", "text-halo-color": "#fff", "text-halo-width": 1.4 },
     });
     map.addLayer({
@@ -469,7 +472,7 @@ function shortLabel(label: string): string {
 
 function checkpointFeature(route: Route, cp: Checkpoint, tz: string): Feature {
   const level = cp.risk?.level ?? -1;
-  const emoji = weatherSticker(cp.weather, cp.risk?.drivers.includes("wind") ?? false, localHour(cp.eta_utc, tz));
+  const emoji = weatherSticker(cp.weather, cp.risk?.drivers.includes("wind") ?? false);
   return {
     type: "Feature",
     properties: {
@@ -478,7 +481,7 @@ function checkpointFeature(route: Route, cp: Checkpoint, tz: string): Feature {
       level,
       color: riskColor(level),
       sticker: stickerId(emoji, level >= 1 ? level : null, level >= 2 ? 32 : 28),
-      label: formatDayTime(cp.eta_utc, tz),
+      label: `${cp.weather?.condition ?? "No forecast"}\n${formatDayTime(cp.eta_utc, tz)}`,
     },
     geometry: { type: "Point", coordinates: [cp.lon, cp.lat] },
   };

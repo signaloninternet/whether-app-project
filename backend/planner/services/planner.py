@@ -16,7 +16,7 @@ from django.core.cache import cache
 from . import hos, weather
 from .http import UpstreamError
 from .weather import iso_utc
-from .geo import METERS_PER_MILE, LatLon, bbox, encode_polyline, point_at_distance, simplify, slice_line
+from .geo import METERS_PER_MILE, LatLon, bbox, encode_polyline, is_daylight, point_at_distance, simplify, slice_line
 from .risk import Risk, assess, rules_table
 from .routing import RouteCandidate, TruckProfile, route_options
 from .routing.types import distinct_labels
@@ -26,7 +26,7 @@ from .scoring import RiskSummary, ScoredRoute, plan_warnings, recommend
 log = logging.getLogger(__name__)
 
 PLAN_CACHE_S = 10 * 60
-PLAN_CACHE_VERSION = "v3"  # bump when the plan payload or routing logic changes
+PLAN_CACHE_VERSION = "v4"  # bump when the plan payload or routing logic changes
 ROUTE_IDS = "ABC"
 
 
@@ -194,7 +194,7 @@ def build_plan(req: PlanRequest) -> dict:
                 "eta_utc": iso_utc(eta),
                 "elapsed_s": round(elapsed),
                 "covers": [round(cp.covers[0], 2), round(cp.covers[1], 2)],
-                "weather": sample.as_dict() if sample else None,
+                "weather": sample.as_dict(daylight=is_daylight(cp.point, eta)) if sample else None,
                 "risk": assessment.as_dict() if assessment else None,
             })
 

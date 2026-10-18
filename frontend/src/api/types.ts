@@ -35,7 +35,8 @@ export interface Weather {
   snow_in_hr: number;
   temp_f: number | null;
   code: number | null;
-  condition: string;
+  is_day: boolean; // sun up at the checkpoint when the truck gets there
+  condition: string; // "Clear night", "Light rain" …
   hour_utc: string;
 }
 
