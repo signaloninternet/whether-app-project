@@ -8,7 +8,7 @@ A 0–48 h weather heatmap along the corridor shows how conditions move while yo
 React + TypeScript + MapLibre on the front, Django + DRF on the back. Routing, geocoding, weather and map tiles are
 real third-party services, and none of them needs an API key.
 
-**Live app:** _add the Render URL here_ · **Walkthrough:** _add the Loom link here_
+**Live app:** (https://routecast-2f9w.onrender.com) 
 
 | Desktop | Route detail | Mobile |
 | --- | --- | --- |
